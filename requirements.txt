@@ -1,0 +1,8 @@
+# Python dependencies for the model bridge.
+# The pickle was trained with scikit-learn 1.6.x, so keep this version for reliable loading.
+numpy==2.2.6
+pandas==2.2.3
+scipy==1.15.3
+scikit-learn==1.6.1
+imbalanced-learn==0.13.0
+joblib==1.4.2

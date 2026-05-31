@@ -1,9 +1,29 @@
+# Node / Next.js
 node_modules
 .next
 out
-.env*.local
+dist
+build
+.vercel
+
+# Environment files
 .env
-__pycache__
-*.pyc
-.DS_Store
+.env.local
+.env.development
+.env.production
+.env*.local
+
+# Python
 ml/.venv
+.venv
+__pycache__
+**/__pycache__
+*.pyc
+
+# Do not commit duplicate root-level model copy
+ml/ckdu_water_risk_model_package.pkl
+!ml/model/ckdu_water_risk_model_package.pkl
+
+# Archives / OS
+*.zip
+.DS_Store

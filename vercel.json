@@ -1,0 +1,9 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "functions": {
+    "api/**/*.py": {
+      "maxDuration": 60,
+      "excludeFiles": "{.next/**,node_modules/**,src/**,public/**,**/*.zip,ml/.venv/**,ml/ckdu_water_risk_model_package.pkl,**/__pycache__/**,**/*.pyc}"
+    }
+  }
+}

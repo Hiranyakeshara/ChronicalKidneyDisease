@@ -1,0 +1,31 @@
+CKDu Vercel-ready replacement package
+=====================================
+
+1) Extract this ZIP.
+2) Open your existing local GitHub project folder.
+3) Delete the old project files except the hidden .git folder.
+   - Do not delete .git if you want to keep the GitHub Desktop connection.
+4) Copy all files from this extracted package into your project folder.
+5) Open GitHub Desktop.
+6) Check that these files are NOT in the commit list:
+   - node_modules
+   - .next
+   - ml/.venv
+   - .env.local
+   - zip files
+7) Commit with this message:
+   Add Vercel-ready Python ML prediction API
+8) Push origin.
+9) In Vercel, import/redeploy the GitHub repository.
+
+Vercel settings:
+- Framework Preset: Next.js
+- Root Directory: ./
+- Build Command: npm run build
+- Install Command: npm install
+- Output Directory: leave default/empty
+
+Prediction endpoint:
+- /api/predict
+
+The frontend already calls /api/predict.

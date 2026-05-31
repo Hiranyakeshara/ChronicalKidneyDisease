@@ -1,141 +1,123 @@
 # CKDu Water Risk Screening Website
 
-A polished **Next.js model-integrated website** for community-level CKDu water-risk awareness. The app connects a public-facing prediction form to the uploaded `ckdu_water_risk_model_package.pkl` model package.
+A Next.js web application for CKDu-related water-risk screening using water-quality inputs and a machine-learning model.
 
-## What this website does
+## What this package includes
 
-- Provides a landing page explaining the purpose of the system.
-- Accepts nine water-quality input values:
-  - pH
-  - Hardness
-  - Total dissolved solids
-  - Chloramines
-  - Sulfate
-  - Conductivity
-  - Organic carbon
-  - Trihalomethanes
-  - Turbidity
-- Sends the values to a Next.js API route.
-- The API route calls the Python model bridge.
-- The Python bridge loads the trained pickle model package and returns:
-  - Non-potable / risky water probability
-  - Potable / safer water probability
-  - Low / Moderate / High risk level
-  - Recommended action
-  - Anomaly status
-  - Water-quality cluster
+- Next.js frontend in `src/`
+- Vercel Python API endpoint in `api/predict.py`
+- Machine-learning logic in `ml/predict.py`
+- Model package in `ml/model/ckdu_water_risk_model_package.pkl`
+- Root `requirements.txt` for Vercel Python dependency installation
+- Vercel config in `vercel.json`
 
-## Important scope note
-
-This is an **environmental water-quality screening tool**. It is **not a clinical CKDu diagnosis system** and must not replace certified laboratory testing, medical advice, or official public-health guidance.
-
-## Project structure
+## Important folder structure
 
 ```text
-ckdu-water-risk-nextjs/
-├── src/
-│   ├── app/
-│   │   ├── api/predict/route.ts     # Next.js API route that calls Python
-│   │   ├── globals.css              # Tailwind global styling
-│   │   ├── layout.tsx
-│   │   └── page.tsx                 # Landing page
-│   ├── components/
-│   │   └── RiskPredictor.tsx        # Main model input/output UI
-│   └── lib/
-│       └── featureMeta.ts           # Feature labels and sample values
+.
+├── api/
+│   └── predict.py                  # Vercel Python API endpoint: /api/predict
 ├── ml/
 │   ├── model/
 │   │   └── ckdu_water_risk_model_package.pkl
-│   ├── predict.py                   # Python prediction bridge
-│   └── requirements.txt             # Python dependencies
-├── package.json
-└── README.md
+│   ├── predict.py                  # ML loading + prediction logic
+│   └── requirements.txt
+├── src/                            # Next.js frontend
+├── requirements.txt                # Python dependencies for Vercel
+├── package.json                    # Next.js dependencies
+├── vercel.json
+└── .gitignore
 ```
 
-## Setup instructions
+## How prediction works
 
-### 1. Install Node dependencies
+```text
+Frontend form → POST /api/predict → Python model loads .pkl file → JSON result → frontend displays risk output
+```
+
+The frontend already calls:
+
+```ts
+fetch("/api/predict", { method: "POST", ... })
+```
+
+## Deploying to Vercel
+
+1. Push this full project to GitHub.
+2. Go to Vercel.
+3. Select **Add New Project**.
+4. Import the GitHub repository.
+5. Use these settings:
+
+```text
+Framework Preset: Next.js
+Root Directory: ./
+Build Command: npm run build
+Install Command: npm install
+Output Directory: Default / leave empty
+```
+
+6. Deploy.
+
+No `PYTHON_PATH` variable is needed on Vercel. The Python function uses the root `requirements.txt`.
+
+## Local frontend testing
 
 ```bash
 npm install
-```
-
-### 2. Create and activate a Python virtual environment
-
-#### Windows PowerShell
-
-```powershell
-cd ml
-python -m venv .venv
-.\.venv\Scripts\Activate.ps1
-pip install -r requirements.txt
-cd ..
-```
-
-#### macOS / Linux
-
-```bash
-cd ml
-python3 -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
-cd ..
-```
-
-### 3. Set the Python path
-
-Create a `.env.local` file in the project root.
-
-#### Windows
-
-```env
-PYTHON_PATH=.\ml\.venv\Scripts\python.exe
-```
-
-#### macOS / Linux
-
-```env
-PYTHON_PATH=./ml/.venv/bin/python
-```
-
-### 4. Run the website
-
-```bash
 npm run dev
 ```
 
-Open the local address shown in the terminal, usually:
+Open:
 
 ```text
 http://localhost:3000
 ```
 
-## Test the model bridge directly
+For local full-stack testing with the Python API, use Vercel CLI:
 
-From the project root, run:
+```bash
+npm install -g vercel
+python -m venv ml/.venv
+ml/.venv/Scripts/activate      # Windows PowerShell/CMD may differ
+pip install -r requirements.txt
+vercel dev
+```
+
+Then open the local Vercel URL shown in the terminal.
+
+## Manual model test
 
 ```bash
 python ml/predict.py
 ```
 
-Then paste this JSON and press Enter:
+Paste one JSON object into stdin, for example:
 
 ```json
 {"ph":7.1,"Hardness":205,"Solids":21000,"Chloramines":7.2,"Sulfate":330,"Conductivity":420,"Organic_carbon":14.5,"Trihalomethanes":66,"Turbidity":3.8}
 ```
 
-The script should return a JSON prediction.
+## Files not to upload manually
 
-## Deployment note
+Do not upload these to GitHub:
 
-This package is ideal for local demonstration and final project submission. For real public deployment, use a persistent Python API backend such as FastAPI because the pickle model is large and should be loaded once when the backend starts. The current Next.js API route starts Python on demand, which is simple and reliable for coursework demos but slower on the first prediction.
+```text
+node_modules
+.next
+ml/.venv
+.env.local
+zip files
+```
 
-## Model package included
-
-The uploaded model file is already included here:
+The project keeps only one model file at:
 
 ```text
 ml/model/ckdu_water_risk_model_package.pkl
 ```
 
-Do not rename it unless you also update `ml/predict.py`.
+Do not add another duplicate model file directly inside `ml/`.
+
+## Disclaimer
+
+This application is for environmental water-quality screening support only. It is not a clinical CKDu diagnosis tool.

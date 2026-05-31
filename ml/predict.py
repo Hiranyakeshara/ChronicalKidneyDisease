@@ -1,8 +1,9 @@
 """
-Prediction bridge for the CKDu water-risk Next.js app.
+Prediction utilities for the CKDu water-risk web app.
 
-The Next.js API route sends one JSON object through stdin. This script loads the
-pickle model package and returns a JSON prediction through stdout.
+This file is used in two ways:
+1. Vercel deployment: api/predict.py imports predict_from_payload().
+2. Local/manual testing: run this file and pass one JSON object through stdin.
 """
 
 from __future__ import annotations
@@ -11,7 +12,7 @@ import json
 import os
 import sys
 import warnings
-from typing import Any, Dict, Iterable, Set
+from typing import Any, Dict, Set
 
 warnings.filterwarnings("ignore")
 
@@ -19,7 +20,8 @@ import joblib
 import numpy as np
 import pandas as pd
 
-MODEL_PATH = os.path.join(os.path.dirname(__file__), "model", "ckdu_water_risk_model_package.pkl")
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+MODEL_PATH = os.path.join(BASE_DIR, "model", "ckdu_water_risk_model_package.pkl")
 
 REQUIRED_FEATURES = [
     "ph",
@@ -33,14 +35,11 @@ REQUIRED_FEATURES = [
     "Turbidity",
 ]
 
+_MODEL_PACKAGE_CACHE: Dict[str, Any] | None = None
+
 
 def install_sklearn_compatibility_patch() -> None:
-    """Allow the package to load even if sklearn is newer than the training version.
-
-    The model was trained with scikit-learn 1.6.x. The recommended fix is to use
-    the same dependency versions listed in requirements.txt. This patch exists as
-    a defensive fallback for newer local environments.
-    """
+    """Allow the package to load even if sklearn is newer than the training version."""
     try:
         import sklearn.compose._column_transformer as column_transformer
 
@@ -87,7 +86,8 @@ def patch_loaded_estimators(obj: Any, seen: Set[int] | None = None) -> None:
         from sklearn.impute import SimpleImputer
 
         if isinstance(obj, SimpleImputer) and not hasattr(obj, "_fill_dtype"):
-            obj._fill_dtype = getattr(getattr(obj, "statistics_", None), "dtype", np.dtype("float64"))
+            statistics = getattr(obj, "statistics_", None)
+            obj._fill_dtype = getattr(statistics, "dtype", np.dtype("float64"))
     except Exception:
         pass
 
@@ -116,12 +116,15 @@ def load_model_package() -> Dict[str, Any]:
     return package
 
 
-def read_input() -> Dict[str, float]:
-    raw_input = sys.stdin.read().strip()
-    if not raw_input:
-        raise ValueError("No JSON input received.")
+def get_model_package() -> Dict[str, Any]:
+    """Cache the loaded model package inside the running serverless instance."""
+    global _MODEL_PACKAGE_CACHE
+    if _MODEL_PACKAGE_CACHE is None:
+        _MODEL_PACKAGE_CACHE = load_model_package()
+    return _MODEL_PACKAGE_CACHE
 
-    payload = json.loads(raw_input)
+
+def clean_input_payload(payload: Any) -> Dict[str, float]:
     if not isinstance(payload, dict):
         raise ValueError("Input must be a JSON object.")
 
@@ -129,7 +132,12 @@ def read_input() -> Dict[str, float]:
     for feature in REQUIRED_FEATURES:
         if feature not in payload:
             raise ValueError(f"Missing required feature: {feature}")
-        value = float(payload[feature])
+
+        try:
+            value = float(payload[feature])
+        except (TypeError, ValueError):
+            raise ValueError(f"Invalid value for feature: {feature}")
+
         if not np.isfinite(value):
             raise ValueError(f"Invalid value for feature: {feature}")
         if feature == "ph" and not (0 <= value <= 14):
@@ -139,6 +147,13 @@ def read_input() -> Dict[str, float]:
         cleaned[feature] = value
 
     return cleaned
+
+
+def read_input() -> Dict[str, float]:
+    raw_input = sys.stdin.read().strip()
+    if not raw_input:
+        raise ValueError("No JSON input received.")
+    return clean_input_payload(json.loads(raw_input))
 
 
 def get_class_probability(model: Any, x_frame: pd.DataFrame, class_label: int) -> float:
@@ -237,10 +252,17 @@ def predict(package: Dict[str, Any], input_values: Dict[str, float]) -> Dict[str
     }
 
 
+def predict_from_payload(payload: Any) -> Dict[str, Any]:
+    """Main function used by the Vercel Python API endpoint."""
+    input_values = clean_input_payload(payload)
+    package = get_model_package()
+    return predict(package, input_values)
+
+
 def main() -> None:
     try:
         input_values = read_input()
-        package = load_model_package()
+        package = get_model_package()
         result = predict(package, input_values)
         print(json.dumps(result), flush=True)
     except Exception as exc:
